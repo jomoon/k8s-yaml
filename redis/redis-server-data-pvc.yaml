@@ -1,0 +1,15 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: redis-server-pvc
+  labels:
+    app: redis-server
+spec:
+  resources:
+    requests:
+      storage: 3G
+  accessModes:
+  - ReadWriteOnce
+  selector:
+    matchLabels:
+      app: redis-server

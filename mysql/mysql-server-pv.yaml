@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-server-pv
+  labels:
+    app: mysql-server-pv
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+  - ReadWriteOnce
+  nfs:
+    server: nfs.server
+    path: /nfs/mysql # 指定NFS共享目录位置，且需要提前创建redis目录
+  persistentVolumeReclaimPolicy: Retain

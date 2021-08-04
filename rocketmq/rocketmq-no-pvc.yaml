@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rocketmq-config
+  labels:
+    app: rocketmq-service
+data:
+  config: |
+    brokerClusterName = DefaultCluster
+    brokerName = broker-a
+    brokerId = 0
+    deleteWhen = 04
+    fileReservedTime = 48
+    brokerRole = ASYNC_MASTER
+    flushDiskType = SYNC_FLUSH
+    brokerIp1 = 10.1.11.112
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  generation: 1
+  labels:
+    app: rocketmq-service
+  name: rocketmq-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rocketmq-service
+  template:
+    metadata:
+      labels:
+        app: rocketmq-service
+    spec:
+      containers:
+      - command:
+        - sh
+        - mqbroker
+        - -c
+        - /opt/rocketmq-4.3.2/conf/broker.properties
+        - -n
+        - localhost:9876
+        image: rocketmqinc/rocketmq:4.3.2
+        imagePullPolicy: Always
+        env: 
+        - name: MAX_POSSIBLE_HEAP
+          value: "1073741824"
+        name: broker
+        ports:
+        - containerPort: 10909
+          protocol: TCP
+          hostPort: 10909
+        - containerPort: 10911
+          protocol: TCP
+          hostPort: 10911
+        resources: 
+          limits:
+            cpu: 2
+            memory: 4Gi
+          requests:
+            cpu: 1
+            memory: 2Gi
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /opt/rocketmq-4.3.2/conf/broker.properties
+          name: configmap
+          subPath: broker.properties
+      - command:
+        - sh
+        - mqnamesrv
+        image: rocketmqinc/rocketmq:4.3.2
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MAX_POSSIBLE_HEAP
+          value: "134217728"
+        name: namesrv
+        ports:
+        - containerPort: 9876
+          hostPort: 9876
+          protocol: TCP
+        resources: 
+          limits:
+            cpu: 1
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 500Mi
+        securityContext:
+          privileged: true
+      restartPolicy: Always  
+      volumes:
+      - configMap:
+          items:
+          - key: config
+            path: broker.properties
+          name: rocketmq-config
+        name: configmap
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: rocketmq-service
+  name: rocketmq-service
+spec:
+  ports:
+  - port: 9876
+    protocol: TCP
+    targetPort: 9876
+    name: port1
+  - port: 10909
+    protocol: TCP
+    targetPort: 10909
+    name: port2
+  - port: 10911
+    protocol: TCP
+    targetPort: 10911
+    name: port3
+  selector:
+    app: rocketmq-service
+  type: ClusterIP
